@@ -8,17 +8,21 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
-        self.ram = [0] * 255
+        self.ram = [0] * 256
         self.reg = {}
         for i in range(8):
             reg[f"R{i}"] = 0
-        self.pc = 0
+        self.PC = 0
+        self.IR = 0b00000000
+        self.MAR = 0b00000000
+        self.MDR = 0b00000000
+        self.FL = 0b00000001
 
-    def ram_read():
-        pass
+    def ram_read(address):
+        return self.ram[address]
 
-    def ram_write():
-        pass
+    def ram_write(address, value):
+        self.ram[address] = value
 
     def load(self):
         """Load a program into memory."""
