@@ -11,17 +11,53 @@ class CPU:
         self.ram = [0] * 256
         self.reg = {}
         for i in range(8):
-            reg[f"R{i}"] = 0
+            self.reg[f"R{i}"] = 0
         self.PC = 0
         self.IR = 0b00000000
         self.MAR = 0b00000000
         self.MDR = 0b00000000
-        self.FL = 0b00000001
+        self.FL = 0b00000000
+        self.INS = {
+            "ADD": 0b10100000,
+            "AND": 0b10101000,
+            "CALL": 0b01010000,
+            "CMP": 0b10100111,
+            "DEC": 0b01100110,
+            "DIV": 0b10100011,
+            "HLT": 0b00000001,
+            "INC": 0b01100101,
+            "INT": 0b01010010,
+            "IRET": 0b00010011,
+            "JEQ": 0b01010101,
+            "JGE": 0b01011010,
+            "JGT": 0b01010111,
+            "JLE": 0b01011001,
+            "JLT": 0b01011000,
+            "JMP": 0b01010100,
+            "JNE": 0b01010110,
+            "LD": 0b10000011,
+            "LDI": 0b10000010,
+            "MOD": 0b10100100,
+            "MUL": 0b10100010,
+            "NOP": 0b00000000,
+            "NOT": 0b01101001,
+            "OR": 0b10101010,
+            "POP": 0b01000110,
+            "PRA": 0b01001000,
+            "PRN": 0b01000111,
+            "PUSH": 0b01000101,
+            "RET": 0b00010001,
+            "SHL": 0b10101100,
+            "SHR": 0b10101101,
+            "ST": 0b10000100,
+            "SUB": 0b10100001,
+            "XOR": 0b10101011,
+        }
 
-    def ram_read(address):
+    def ram_read(self, address):
         return self.ram[address]
 
-    def ram_write(address, value):
+    def ram_write(self, address, value):
         self.ram[address] = value
 
     def load(self):
@@ -61,12 +97,12 @@ class CPU:
         """
 
         print(f"TRACE: %02X | %02X %02X %02X |" % (
-            self.pc,
+            self.PC,
             # self.fl,
             # self.ie,
-            self.ram_read(self.pc),
-            self.ram_read(self.pc + 1),
-            self.ram_read(self.pc + 2)
+            self.ram_read(self.PC),
+            self.ram_read(self.PC + 1),
+            self.ram_read(self.PC + 2)
         ), end='')
 
         for i in range(8):
@@ -76,4 +112,27 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        pass
+        while True:
+            # Get the next Instruction
+            self.IR = self.ram_read(self.PC)
+
+            if self.IR == self.INS["HLT"]:
+                # HLT
+                break
+            elif self.IR == self.INS["LDI"]:
+                # LDI
+                # use 1st arg to grab register
+                self.reg[f"R{self.ram_read(self.PC + 1)}"] = self.ram_read(self.PC + 2)
+                # store second arg in register
+                print(
+                    f"set R{self.ram_read(self.PC + 1)} to {self.ram_read(self.PC + 2)}")
+                self.PC += 2
+            elif self.IR == self.INS["PRN"]:
+                # PRN
+                # print the value in the first argument
+                print(self.reg[f"R{self.ram_read(self.PC + 1)}"])
+                self.PC += 1
+            else:
+                print(f"could nto recognize command: {self.IR}")
+
+            self.PC += 1
