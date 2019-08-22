@@ -2,6 +2,13 @@
 
 import sys
 
+DEBUGGING = False
+
+# so I don't have to comment and uncomment prints
+def debug(message):
+    if DEBUGGING:
+        print(message)
+
 
 class CPU:
     """Main CPU class."""
@@ -13,7 +20,8 @@ class CPU:
         for i in range(8):
             self.reg[i] = 0
         self.PC = 0
-        self.SP = 0
+        self.SP = 7
+        self.RH = 0
         self.IR = 0b00000000
         self.MAR = 0b00000000
         self.MDR = 0b00000000
@@ -64,10 +72,11 @@ class CPU:
     def load(self, program):
         """Load a program into memory."""
         address = 0
-
         for instruction in program:
             self.ram[address] = instruction
             address += 1
+
+        self.RH = address
 
     def ADD(self):
         pass
@@ -92,7 +101,7 @@ class CPU:
 
     def INC(self):
         pass
-
+        
     def INT(self):
         pass
 
@@ -127,7 +136,8 @@ class CPU:
         reg = self.ram_read(self.PC + 1)
         self.reg[reg] = self.ram_read(self.PC + 2)
         # store second arg in register
-        # print(f"set R{self.ram_read(self.PC + 1)} to {self.ram_read(self.PC + 2)}")
+        debug(
+            f"set R{self.ram_read(self.PC + 1)} to {self.ram_read(self.PC + 2)}")
         self.PC += 2
 
     def MOD(self):
@@ -152,17 +162,39 @@ class CPU:
         pass
 
     def POP(self):
-        pass
+        # get register id from ram
+        reg = self.ram_read(self.PC + 1)
+        # set registers value to last value on stack
+        self.reg[reg] = self.ram_read(self.reg[self.SP])
+        # increment stack
+        self.reg[self.SP] += 1
+        # increment PC to pass memory spaces ready by program
+        self.PC += 1
 
     def PRA(self):
         pass
 
     def PRN(self):
+        debug(f"printing register {self.ram_read(self.PC + 1)}")
         print(self.reg[self.ram_read(self.PC + 1)])
         self.PC += 1
 
     def PUSH(self):
-        pass
+        # decrement stack pointer by 1
+        self.reg[self.SP] -= 1
+
+        # check that stack is not overflowing into heap
+        if self.reg[self.SP] == self.PC:
+            print("Stack Overflow")
+            self.trace()
+            sys.exit(1)
+
+        # set register to next value in ram
+        reg = self.ram_read(self.PC + 1)
+        # write to address of SP value of reg
+        self.ram_write(self.reg[self.SP], self.reg[reg])
+
+        self.PC += 1
 
     def RET(self):
         pass
@@ -214,15 +246,14 @@ class CPU:
     def run(self):
         """Run the CPU."""
         self.PC = 0  # point to beginning of RAM
-        self.SP = len(self.ram) - 1  # point to end of RAM
+        self.reg[self.SP] = -1  # point to end of RAM
 
         while True:
             # Get the next Instruction
             self.IR = self.ram_read(self.PC)
 
             if self.IR in self.CMD.keys():
-                command = self.CMD[self.IR]
-                command()
+                self.CMD[self.IR]()
             else:
                 print(f"could not recognize command: {self.IR}")
                 self.trace()
