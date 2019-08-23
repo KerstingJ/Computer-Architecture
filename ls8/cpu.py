@@ -18,16 +18,38 @@ class CPU:
     def __init__(self):
         """Construct a new CPU."""
         self.ram = [0] * 256
+
+        # 8 general-purpose 8-bit numeric registers R0-R7.
+        # R5 is reserved as the interrupt mask (IM)
+        # R6 is reserved as the interrupt status (IS)
+        # R7 is reserved as the stack pointer (SP)
         self.reg = {}
         for i in range(8):
             self.reg[i] = 0
+        
+        # Program Counter, address of the currently executing instruction
         self.PC = 0
+
+        # this is a helper to point to R7
         self.SP = 7
-        self.RH = 0
+        # this is a helper to point to top of heap
+        self.HH = 0
+
+        # Instruction Register, contains a copy of the currently executing instruction
         self.IR = 0b00000000
+
+        # Memory Address Register, holds the memory address we're reading or writing
         self.MAR = 0b00000000
+
+        # Memory Data Register, holds the value to write or the value just read
         self.MDR = 0b00000000
+        # Flags
+        # 00000LGE
+        # L less than
+        # G greater than
+        # E equal
         self.FL = 0b00000000
+
         self.CMD = {
             0b10100000: self.ADD,
             0b10101000: self.AND,
@@ -89,7 +111,7 @@ class CPU:
         pass
 
     def AND(self):
-        debug("calling ADD")
+        debug("calling AND")
         self.PC += 1
         pass
 
@@ -117,9 +139,31 @@ class CPU:
         pass
 
     def CMP(self):
+        """ 
+        `CMP registerA registerB`
+        Compare the values in two registers.
+        * If they are equal, set the Equal `E` flag to 1, otherwise set it to 0.
+        * If registerA is less than registerB, set the Less-than `L` flag to 1,
+        otherwise set it to 0.
+        * If registerA is greater than registerB, set the Greater-than `G` flag
+        to 1, otherwise set it to 0.
+        Machine code:
+        ```
+        10100111 00000aaa 00000bbb
+        A7 0a 0b
+        ```
+        """
         debug("calling CMP")
-        self.PC += 1
-        pass
+        reg_a = self.ram_read(self.PC + 1)
+        reg_b = self.ram_read(self.PC + 2)
+        if self.reg[reg_a] > self.reg[reg_b]:
+            self.FL = 0b00000010;
+        elif self.reg[reg_a] == self.reg[reg_b]:
+            self.FL = 0b00000001;
+        elif self.reg[reg_a] < self.reg[reg_b]:
+            self.FL = 0b00000100;
+
+        self.PC += 3
 
     def DEC(self):
         debug("calling DEC")
@@ -152,9 +196,21 @@ class CPU:
         pass
 
     def JEQ(self):
-        debug("calling JEQ")
-        self.PC += 1
-        pass
+        """
+        `JEQ register`
+        If `equal` flag is set (true), jump to the address stored in the given register.
+        Machine code:
+        ```
+        01010101 00000rrr
+        55 0r
+        ```
+        """
+        debug(f"JEQ R{self.ram_read(self.PC + 1)}")
+        reg = self.ram_read(self.PC + 1)
+        if self.FL == 0b00000001:
+            self.PC = self.reg[reg]
+        else:
+            self.PC += 2
 
     def JGE(self):
         debug("calling JGE")
@@ -177,14 +233,38 @@ class CPU:
         pass
 
     def JMP(self):
-        debug("calling JMP")
-        self.PC += 1
-        pass
+        """
+        `JMP register`
+        Jump to the address stored in the given register.
+        Set the `PC` to the address stored in the given register.
+        Machine code:
+        ```
+        01010100 00000rrr
+        54 0r
+        ```
+        """
+        debug(f"JMP, R{self.ram_read(self.PC+1)}")
+        reg = self.ram_read(self.PC+1)
+        self.PC = self.reg[reg]
 
     def JNE(self):
-        debug("calling JNE")
-        self.PC += 1
-        pass
+        """
+        `JNE register`
+        If `E` flag is clear (false, 0), jump to the address stored in the given
+        register.
+        Machine code:
+        ```
+        01010110 00000rrr
+        56 0r
+        ```
+        """
+        debug(f"JNE R{self.ram_read(self.PC + 1)}")
+        reg = self.ram_read(self.PC + 1)
+        should_jump = self.FL & 0b00000001
+        if should_jump == 1:
+            self.PC = self.reg[reg]
+        else:
+            self.PC += 2
 
     def LD(self):
         debug("calling LD")
